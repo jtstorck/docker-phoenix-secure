@@ -1,24 +1,26 @@
 FROM knappek/hadoop-secure:2.7.4
-MAINTAINER knappek
+MAINTAINER jtstorck
+
+ARG hdp_repo_os=centos6
+ARG hdp_repo_path=2.x/updates
+ARG hdp_repo_version=2.6.1.0
+
+# rebuild rpm database and install yum-plugin-ovl to address "Rpmdb checksum is invalid: dCDPT(pkg checksums)" errors on docker
+RUN sudo rm -f /var/lib/rpm/__db*; sudo db_verify /var/lib/rpm/Packages; sudo rpm --rebuilddb; yum install -y yum-plugin-ovl
+
+# install wget and add HDP repo to yum
+RUN yum -y install wget && wget -nv http://public-repo-1.hortonworks.com/HDP/$hdp_repo_os/$hdp_repo_path/$hdp_repo_version/hdp.repo -O /etc/yum.repos.d/hdp.repo
 
 # zookeeper
-ENV ZOOKEEPER_VERSION 3.4.10
-RUN curl -s http://mirror.csclub.uwaterloo.ca/apache/zookeeper/zookeeper-$ZOOKEEPER_VERSION/zookeeper-$ZOOKEEPER_VERSION.tar.gz | tar -xz -C /usr/local/
-#COPY local_files/zookeeper-$ZOOKEEPER_VERSION.tar.gz /usr/local/zookeeper-$ZOOKEEPER_VERSION.tar.gz
-#RUN tar -xzvf /usr/local/zookeeper-$ZOOKEEPER_VERSION.tar.gz -C /usr/local/
-RUN cd /usr/local && ln -s ./zookeeper-$ZOOKEEPER_VERSION zookeeper
+RUN yum -y install zookeeper-server
+RUN ln -s /usr/hdp/current/zookeeper-server /usr/local/zookeeper
 ENV ZOO_HOME /usr/local/zookeeper
 ENV PATH $PATH:$ZOO_HOME/bin
 RUN mkdir /tmp/zookeeper
 
 # hbase
-ENV HBASE_MAJOR 1.3
-ENV HBASE_MINOR 1
-ENV HBASE_VERSION "${HBASE_MAJOR}.${HBASE_MINOR}"
-RUN curl -s http://apache.mirror.gtcomm.net/hbase/$HBASE_MAJOR.$HBASE_MINOR/hbase-$HBASE_MAJOR.$HBASE_MINOR-bin.tar.gz | tar -xz -C /usr/local/
-#COPY local_files/hbase-$HBASE_VERSION-bin.tar.gz /usr/local/hbase-$HBASE_VERSION-bin.tar.gz
-#RUN tar -xzvf /usr/local/hbase-$HBASE_VERSION-bin.tar.gz -C /usr/local
-RUN cd /usr/local && ln -s ./hbase-$HBASE_VERSION hbase
+RUN yum -y install hbase
+RUN ln -s /usr/hdp/current/hbase-master /usr/local/hbase
 ENV HBASE_HOME /usr/local/hbase
 ENV PATH $PATH:$HBASE_HOME/bin
 RUN rm $HBASE_HOME/conf/hbase-site.xml
@@ -26,15 +28,12 @@ COPY config_files/hbase-site.xml $HBASE_HOME/conf/hbase-site.xml
 
 # phoenix
 RUN yum install python-argparse.noarch -y
-ENV PHOENIX_VERSION 4.11.0
-RUN curl -s http://apache.mirror.vexxhost.com/phoenix/apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR/bin/apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-bin.tar.gz | tar -xz -C /usr/local/
-#COPY local_files/apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-bin.tar.gz /usr/local/apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-bin.tar.gz
-#RUN tar -xzvf /usr/local/apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-bin.tar.gz -C /usr/local
-RUN cd /usr/local && ln -s ./apache-phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-bin phoenix
+RUN yum -y install phoenix
+RUN ln -s /usr/hdp/current/phoenix-server /usr/local/phoenix
 ENV PHOENIX_HOME /usr/local/phoenix
 ENV PATH $PATH:$PHOENIX_HOME/bin
-RUN cp $PHOENIX_HOME/phoenix-core-$PHOENIX_VERSION-HBase-$HBASE_MAJOR.jar $HBASE_HOME/lib/phoenix.jar
-RUN cp $PHOENIX_HOME/phoenix-$PHOENIX_VERSION-HBase-$HBASE_MAJOR-server.jar $HBASE_HOME/lib/phoenix-server.jar
+# TODO need to work around copying explicit versin of phoenix-core jar
+#RUN cp $PHOENIX_HOME/lib/phoenix-core-4.7.0.2.6.1.0-129.jar $HBASE_HOME/lib/phoenix.jar
 
 # Kerberos client
 RUN yum install krpb5-libs krb5-workstation krb5-auth-dialog -y
@@ -45,6 +44,7 @@ RUN touch /var/log/kerberos/kadmind.log
 COPY config_files/hbase-server.jaas $HBASE_HOME/conf/hbase-server.jaas
 COPY config_files/hbase-client.jaas $HBASE_HOME/conf/hbase-client.jaas
 COPY config_files/hbase-env.sh $HBASE_HOME/conf/hbase-env.sh
+RUN cp /usr/local/hadoop/etc/hadoop/core-site.xml $HBASE_HOME/conf/core-site.xml
 RUN mkdir -p /apps/hbase/staging && chmod 711 /apps/hbase/staging
 
 # Kerberos Phoenix

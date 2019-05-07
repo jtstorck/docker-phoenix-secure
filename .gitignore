@@ -1,2 +1,4 @@
 *.tar.gz
 local_files/
+*.iml
+*.idea

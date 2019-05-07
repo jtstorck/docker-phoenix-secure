@@ -40,6 +40,7 @@ kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "addprinc -randkey 
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "addprinc -randkey yarn/$(hostname -f)@${KRB_REALM}"
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "addprinc -randkey rm/$(hostname -f)@${KRB_REALM}"
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "addprinc -randkey nm/$(hostname -f)@${KRB_REALM}"
+kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "addprinc -randkey user@${KRB_REALM}"
 
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k nn.service.keytab nn/$(hostname -f)"
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k dn.service.keytab dn/$(hostname -f)"
@@ -48,6 +49,7 @@ kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k jhs.service
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k yarn.service.keytab yarn/$(hostname -f)"
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k rm.service.keytab rm/$(hostname -f)"
 kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k nm.service.keytab nm/$(hostname -f)"
+kadmin -p ${KERBEROS_ADMIN} -w ${KERBEROS_ADMIN_PASSWORD} -q "xst -k user.headless.keytab user"
 
 mkdir -p ${KEYTAB_DIR}
 mv nn.service.keytab ${KEYTAB_DIR}
@@ -57,6 +59,7 @@ mv jhs.service.keytab ${KEYTAB_DIR}
 mv yarn.service.keytab ${KEYTAB_DIR}
 mv rm.service.keytab ${KEYTAB_DIR}
 mv nm.service.keytab ${KEYTAB_DIR}
+mv user.headless.keytab ${KEYTAB_DIR}
 chmod 400 ${KEYTAB_DIR}/nn.service.keytab
 chmod 400 ${KEYTAB_DIR}/dn.service.keytab
 chmod 400 ${KEYTAB_DIR}/spnego.service.keytab
@@ -64,6 +67,7 @@ chmod 400 ${KEYTAB_DIR}/jhs.service.keytab
 chmod 400 ${KEYTAB_DIR}/yarn.service.keytab
 chmod 400 ${KEYTAB_DIR}/rm.service.keytab
 chmod 400 ${KEYTAB_DIR}/nm.service.keytab
+chmod 400 ${KEYTAB_DIR}/user.headless.keytab
 #########################################################################################################################################
 
 # hbase kerberos
@@ -114,8 +118,8 @@ usermod -a -G hadoop hbase
 hdfs dfs -mkdir /hbase
 hdfs dfs -chown -R hbase:hadoop /hbase
 kdestroy
-$HBASE_HOME/bin/start-hbase.sh
-
+$HBASE_HOME/bin/hbase-daemon.sh --config "/usr/local/hbase/conf" start master
+$HBASE_HOME/bin/hbase-daemon.sh --config "/usr/local/hbase/conf" start regionserver
 if [[ $1 == "-d" ]]; then
   while true; do sleep 1000; done
 fi
